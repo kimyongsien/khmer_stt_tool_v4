@@ -34,27 +34,6 @@ V4/
     ├── chunks/
     ├── csv/
     ├── exports/
-    └── session_state/
-
-## Project Structure
-
-```bash
-V4/
-├── app.py
-├── requirements.txt
-├── .env
-├── static/
-│   ├── app.js
-│   └── styles.css
-├── templates/
-│   └── index.html
-└── khmer_stt_data/
-    ├── raw_audio/
-    ├── processed_audio/
-    ├── preview_audio/
-    ├── chunks/
-    ├── csv/
-    ├── exports/
 
 
 Getting Started
@@ -62,7 +41,7 @@ Getting Started
 Follow these steps to run the project locally.
 
 1. Clone the Repository
-git clone https://github.com/your-username/your-repo-name.git
+git clone https://github.com/kimyongsien/khmer_stt_annotation_toolss
 cd your-repo-name
 
 2. Create Virtual Environment
