@@ -1,6 +1,8 @@
-flask
+Flask
+python-dotenv
 pandas
 soundfile
 librosa
 google-generativeai
-python-dotenv
+Authlib
+gunicorn

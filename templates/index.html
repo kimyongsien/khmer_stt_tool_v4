@@ -12,58 +12,76 @@
 <body data-page="{{ page }}" data-verify-url="{{ url_for('verify_route') }}" data-process-url="{{ url_for('process_ajax_route') }}">
   <main class="container">
     <header class="header">
-      <h1>Khmer STT Tool v4</h1>
-      <p class="status">{{ status }}</p>
+      <div class="section-head">
+        <div>
+          <h1>Khmer STT Tool v4</h1>
+          <p class="status">{{ status }}</p>
+        </div>
+
+        {% if current_user %}
+          <div class="actions">
+            <span class="muted">{{ current_user.name or current_user.email }}</span>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline">Logout</a>
+          </div>
+        {% endif %}
+      </div>
     </header>
 
     <section class="card">
-    <h2>Add New Audio File</h2>
+      <h2>Add New Audio File</h2>
 
-    <!-- PROCESS FORM -->
-    <form id="process-form" method="post" action="{{ url_for('process_route') }}" enctype="multipart/form-data" class="grid-form">
-      <input type="hidden" name="page" value="{{ page }}" />
+      <form id="process-form" method="post" action="{{ url_for('process_route') }}" enctype="multipart/form-data" class="grid-form">
+        <input type="hidden" name="page" value="{{ page }}" />
 
-      <!-- Audio -->
-      <label class="field">
-        <span>Audio File</span>
-        <input type="file" name="audio_file" accept="audio/*" required />
-      </label>
-
-      <!-- Topic + Subtopic (SIDE BY SIDE) -->
-      <div class="two-col">
         <label class="field">
-          <span>Topic</span>
-          <input type="text" name="topic" placeholder="Recording name or source" value="{{ topic }}" />
+          <span>Gemini API Key</span>
+          <input type="password" name="gemini_api_key" placeholder="Paste your Gemini API key" />
+          <small class="muted">Your key is saved for your account workspace and reused until you change it.</small>
         </label>
 
         <label class="field">
-          <span>Subtopic</span>
-          <input type="text" name="subtopic" placeholder="Example: a100" value="{{ subtopic }}" />
+          <span>Audio File</span>
+          <input type="file" name="audio_file" accept="audio/*" required />
+          {% if file_name %}
+            <small class="muted">Last loaded: {{ file_name }}</small>
+          {% endif %}
         </label>
+
+        <div class="two-col">
+          <label class="field">
+            <span>Topic</span>
+            <input type="text" name="topic" placeholder="Recording name or source" value="{{ topic }}" />
+          </label>
+
+          <label class="field">
+            <span>Subtopic</span>
+            <input type="text" name="subtopic" placeholder="Example: a100" value="{{ subtopic }}" />
+          </label>
+        </div>
+      </form>
+
+      <div class="actions row-actions">
+        <button id="process-btn" class="btn btn-blue" type="submit" form="process-form">
+          Process Audio
+        </button>
+
+        <form method="post" action="{{ url_for('export_route') }}">
+          <button class="btn btn-dark" type="submit">
+            Export Dataset ZIP
+          </button>
+        </form>
+
+        <form id="clear-history-form" method="post" action="{{ url_for('clear_history_route') }}">
+          <button id="clear-history-open" class="btn btn-outline" type="button">
+            Clear History
+          </button>
+        </form>
       </div>
-    </form>
 
-    <!-- ACTION BUTTONS (OUTSIDE FORM) -->
-    <div class="actions row-actions">
-      <button id="process-btn" class="btn btn-blue" type="submit" form="process-form">
-        Process Audio
-      </button>
-
-      <!-- EXPORT (SEPARATE FORM) -->
-      <form method="post" action="{{ url_for('export_route') }}">
-        <button class="btn btn-dark" type="submit">
-          Export Dataset ZIP
-        </button>
-      </form>
-
-      <!-- CLEAR -->
-      <form id="clear-history-form" method="post" action="{{ url_for('clear_history_route') }}">
-        <button id="clear-history-open" class="btn btn-outline" type="button">
-          Clear History
-        </button>
-      </form>
-    </div>
-  </section>
+      <p class="muted" style="margin-top:12px;">
+        Please export your data after finishing. Temporary server storage is not guaranteed forever.
+      </p>
+    </section>
 
     <section class="card">
       <h2>Full Original Audio</h2>

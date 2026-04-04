@@ -26,3 +26,4 @@ Thumbs.db
 # Dataset folder if too large
 khmer_stt_data/
 test_gemini.py
+.env
