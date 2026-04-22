@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
 </head>
-<body data-page="{{ page }}" data-verify-url="{{ url_for('verify_route') }}" data-process-url="{{ url_for('process_ajax_route') }}">
+<body data-page="{{ page }}" data-verify-url="{{ url_for('verify_route') }}" data-process-url="{{ url_for('process_ajax_route') }}" data-save-key-url="{{ url_for('save_gemini_key_route') }}">
   <main class="container">
     <header class="header">
       <div class="section-head">
@@ -35,7 +35,10 @@
 
         <label class="field">
           <span>Gemini API Key</span>
-          <input type="password" name="gemini_api_key" placeholder="Paste your Gemini API key" />
+          <div class="input-action">
+            <input type="password" name="gemini_api_key" placeholder="Paste your Gemini API key" />
+            <button id="add-key-btn" class="btn btn-outline" type="button">Add Key</button>
+          </div>
           <small class="muted">Your key is saved for your account workspace and reused until you change it.</small>
         </label>
 

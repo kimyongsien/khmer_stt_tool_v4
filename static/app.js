@@ -2,6 +2,7 @@
   const body = document.body;
   const verifyUrl = body?.dataset?.verifyUrl;
   const processUrl = body?.dataset?.processUrl;
+  const saveKeyUrl = body?.dataset?.saveKeyUrl;
   const statusEl = document.querySelector(".status");
 
   function setStatus(text) {
@@ -76,6 +77,48 @@
     });
   }
 
+  function bindAddKeyButton() {
+    const form = document.getElementById("process-form");
+    const btn = document.getElementById("add-key-btn");
+    if (!form || !btn || !saveKeyUrl) return;
+
+    btn.addEventListener("click", async function () {
+      const keyInput = form.querySelector('input[name="gemini_api_key"]');
+      const geminiKey = keyInput ? keyInput.value.trim() : "";
+
+      if (!geminiKey) {
+        setStatus("Error: please enter your Gemini API key.");
+        return;
+      }
+
+      btn.disabled = true;
+      const oldText = btn.textContent;
+      btn.textContent = "Checking...";
+      setStatus("Checking Gemini API key...");
+
+      try {
+        const data = new FormData();
+        data.append("gemini_api_key", geminiKey);
+
+        const res = await fetch(saveKeyUrl, {
+          method: "POST",
+          body: data,
+        });
+
+        const payload = await res.json().catch(function () {
+          return { ok: false, message: "Unexpected server response." };
+        });
+
+        setStatus(payload.message || "Unable to save Gemini API key.");
+      } catch (e) {
+        setStatus("Network error while saving Gemini API key.");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = oldText;
+      }
+    });
+  }
+
   function bindClearHistoryModal() {
     const modal = document.getElementById("clear-history-modal");
     const openBtn = document.getElementById("clear-history-open");
@@ -113,6 +156,7 @@
   }
 
   bindProcessForm();
+  bindAddKeyButton();
   bindClearHistoryModal();
   if (!verifyUrl) return;
 

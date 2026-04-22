@@ -84,6 +84,16 @@ body {
   color: #33435f;
 }
 
+.input-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.input-action input {
+  flex: 1;
+}
+
 input,
 select,
 textarea {

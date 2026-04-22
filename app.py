@@ -56,6 +56,10 @@ app.permanent_session_lifetime = timedelta(days=7)
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
+DEV_BYPASS_LOGIN = os.getenv("DEV_BYPASS_LOGIN", "").strip().lower() in {"1", "true", "yes", "on"}
+DEV_BYPASS_NAME = os.getenv("DEV_BYPASS_NAME", "Local Dev User").strip() or "Local Dev User"
+DEV_BYPASS_EMAIL = os.getenv("DEV_BYPASS_EMAIL", "local-dev@example.com").strip() or "local-dev@example.com"
+FLASK_DEBUG_MODE = os.getenv("FLASK_DEBUG", "").strip().lower() in {"1", "true", "yes", "on"}
 
 oauth = OAuth(app)
 if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
@@ -72,8 +76,20 @@ if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
 # AUTH HELPERS
 # =========================================================
 
+def get_dev_user() -> dict:
+    return {
+        "sub": "local-dev-user",
+        "email": DEV_BYPASS_EMAIL,
+        "name": DEV_BYPASS_NAME,
+        "picture": "",
+    }
+
+
 def get_current_user() -> dict | None:
     user = session.get("user")
+    if not user and DEV_BYPASS_LOGIN:
+        user = get_dev_user()
+        session["user"] = user
     return user if isinstance(user, dict) else None
 
 
@@ -165,6 +181,10 @@ def sec_to_time(sec: float) -> str:
     return f"{m}:{s:02d}"
 
 
+def round_seconds(value: float) -> float:
+    return round(float(value), 3)
+
+
 def clamp_page(page: int, total: int) -> int:
     if total <= 0:
         return 1
@@ -251,10 +271,9 @@ def save_csv(df: pd.DataFrame):
             out[col] = ""
 
     out["sentence_id"] = pd.to_numeric(out["sentence_id"], errors="coerce").fillna(0).astype(int)
-
-    out["duration"] = out["duration"].fillna("").astype(str)
-    out["start"] = out["start"].fillna("").astype(str)
-    out["end"] = out["end"].fillna("").astype(str)
+    out["duration"] = pd.to_numeric(out["duration"], errors="coerce").round(3)
+    out["start"] = pd.to_numeric(out["start"], errors="coerce").round(3)
+    out["end"] = pd.to_numeric(out["end"], errors="coerce").round(3)
 
     out["save_dir"] = out["save_dir"].fillna("").astype(str)
     out["audio_path"] = out["audio_path"].fillna("").astype(str)
@@ -466,6 +485,19 @@ Rules:
     return extract_json_block(raw_text)
 
 
+def validate_gemini_api_key(user_api_key: str):
+    if not user_api_key:
+        raise ValueError("Gemini API key is missing.")
+
+    genai.configure(api_key=user_api_key)
+    model = genai.GenerativeModel("gemini-2.5-flash")
+    response = model.generate_content("Reply with OK.")
+    raw_text = response.text if hasattr(response, "text") and response.text else str(response)
+
+    if not raw_text.strip():
+        raise ValueError("Gemini returned an empty response while validating the API key.")
+
+
 def validate_segments(payload: dict, audio_duration: float) -> list[dict]:
     segments = payload.get("segments", [])
     repaired = []
@@ -618,7 +650,7 @@ def finalize_audio(rows: list[dict]) -> tuple[list[dict], str]:
 
         start_sec = float(row["start"])
         end_sec = float(row["end"])
-        duration_sec = int_duration(start_sec, end_sec)
+        duration_sec = round_seconds(max(0, end_sec - start_sec))
 
         final_csv_rows.append(
             {
@@ -628,11 +660,11 @@ def finalize_audio(rows: list[dict]) -> tuple[list[dict], str]:
                 "paragraph_id": 1,
                 "sentence_id": new_idx,
                 "transcript": row["transcript"],
-                "duration": sec_to_time(duration_sec),
+                "duration": duration_sec,
                 "audio_path": final_audio_name,
                 "save_dir": base_name,
-                "start": sec_to_time(start_sec),
-                "end": sec_to_time(end_sec),
+                "start": round_seconds(start_sec),
+                "end": round_seconds(end_sec),
                 "gender": row["gender"],
             }
         )
@@ -698,6 +730,11 @@ def safe_media_path(path_str: str) -> Path | None:
 @app.get("/login")
 def login():
     if get_current_user():
+        return redirect(url_for("index"))
+
+    if DEV_BYPASS_LOGIN:
+        session.permanent = True
+        session["user"] = get_dev_user()
         return redirect(url_for("index"))
 
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
@@ -888,6 +925,31 @@ def process_ajax_route():
             pass
 
 
+@app.post("/save-gemini-key")
+@login_required
+def save_gemini_key_route():
+    gemini_key = request.form.get("gemini_api_key", "").strip()
+    state = load_state()
+
+    if not gemini_key:
+        msg = "Error: please enter your Gemini API key."
+        state["status"] = msg
+        save_state(state)
+        return jsonify({"ok": False, "message": msg}), 400
+
+    try:
+        validate_gemini_api_key(gemini_key)
+        state["gemini_api_key"] = gemini_key
+        state["status"] = "Gemini API key added successfully."
+        save_state(state)
+        return jsonify({"ok": True, "message": state["status"]})
+    except Exception as e:
+        msg = f"Error: unable to validate Gemini API key. {e}"
+        state["status"] = msg
+        save_state(state)
+        return jsonify({"ok": False, "message": msg}), 400
+
+
 @app.post("/verify")
 @login_required
 def verify_route():
@@ -985,4 +1047,4 @@ def debug_user_route():
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=7860, debug=True)
+    app.run(host="127.0.0.1", port=7860, debug=FLASK_DEBUG_MODE, use_reloader=False)
